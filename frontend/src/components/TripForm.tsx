@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LocationInput } from '@/components/LocationInput'
+import { DateTimePicker } from '@/components/DateTimePicker'
 
 interface Props {
   loading: boolean
@@ -98,12 +99,7 @@ export function TripForm({ loading, onSubmit }: Props) {
                 <CalendarClock className="size-3.5 text-muted-foreground" />
                 Trip start
               </Label>
-              <Input
-                id="start"
-                type="datetime-local"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+              <DateTimePicker id="start" value={startTime} onChange={setStartTime} />
               <p className="text-xs text-muted-foreground">Snapped to 15-min marks</p>
             </div>
           </div>
