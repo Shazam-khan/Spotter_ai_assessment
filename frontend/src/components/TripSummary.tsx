@@ -59,7 +59,7 @@ function RouteNode({ city, caption, last }: { city: string; caption: string; las
 
 export function TripSummary({ summary }: { summary: TripSummaryData }) {
   const cycleEnd = summary.cycle_used_at_end
-  const cyclePct = cycleEnd !== null ? Math.min((cycleEnd / 70) * 100, 100) : 100
+  const cyclePct = Math.min((cycleEnd / 70) * 100, 100)
 
   return (
     <div className="space-y-3">
@@ -101,7 +101,7 @@ export function TripSummary({ summary }: { summary: TripSummaryData }) {
         <div className="lift rounded-lg border border-border bg-card px-4 py-3.5">
           <div className="flex items-baseline justify-between">
             <span className="font-mono text-lg font-semibold leading-tight">
-              {cycleEnd !== null ? cycleEnd.toFixed(1) : '0.0'}
+              {cycleEnd.toFixed(1)}
               <span className="text-xs text-muted-foreground"> / 70 hrs</span>
             </span>
           </div>
@@ -116,7 +116,8 @@ export function TripSummary({ summary }: { summary: TripSummaryData }) {
             />
           </div>
           <div className="mt-1.5 text-xs text-muted-foreground">
-            {cycleEnd !== null ? 'Cycle used after trip' : 'Cycle reset by 34-hr restart'}
+            Cycle used after trip
+            {summary.restarts > 0 && ' · reset mid-trip by 34-hr restart'}
           </div>
         </div>
       </div>

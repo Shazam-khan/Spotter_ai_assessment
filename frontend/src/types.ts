@@ -67,7 +67,7 @@ export interface TripSummaryData {
   fuel_stops: number
   breaks: number
   restarts: number
-  cycle_used_at_end: number | null
+  cycle_used_at_end: number
   locations: { current: string; pickup: string; dropoff: string }
 }
 

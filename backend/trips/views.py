@@ -158,10 +158,10 @@ class PlanTripView(APIView):
         driving_hrs = sum(seg.hours for seg in segments if seg.status == DRIVING)
         on_duty_hrs = sum(seg.hours for seg in segments if seg.status == ON_DUTY)
         restarts = sum(1 for seg in segments if seg.kind == "restart")
+        # End-of-trip cycle usage = the final sheet's recap "B" — this already
+        # accounts for any mid-trip 34-hr restart resetting the count.
         cycle_used_end = (
-            data["current_cycle_used"] + driving_hrs + on_duty_hrs
-            if restarts == 0
-            else None  # cycle was reset mid-trip by a 34-hr restart
+            logs[-1]["recap"]["total_last_8_days"] if logs else data["current_cycle_used"]
         )
 
         return Response(
@@ -184,9 +184,7 @@ class PlanTripView(APIView):
                     "fuel_stops": sum(1 for s in segments if s.kind == "fuel"),
                     "breaks": sum(1 for s in segments if s.kind == "break"),
                     "restarts": restarts,
-                    "cycle_used_at_end": (
-                        round(cycle_used_end, 2) if cycle_used_end is not None else None
-                    ),
+                    "cycle_used_at_end": round(cycle_used_end, 2),
                     "locations": {
                         "current": place_by_kind["pretrip"],
                         "pickup": place_by_kind["pickup"],
