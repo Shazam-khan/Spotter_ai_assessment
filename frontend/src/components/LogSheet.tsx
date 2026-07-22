@@ -16,7 +16,7 @@ const ROW_H = 40
 const GRID_H = ROW_H * 4
 const TOTALS_X = GRID_X + GRID_W + 10
 const REMARKS_Y = GRID_Y + GRID_H
-const REMARKS_H = 205
+const REMARKS_H = 150
 const SVG_W = 990
 const SVG_H = REMARKS_Y + REMARKS_H
 
@@ -325,24 +325,58 @@ export function LogSheet({ log, dayNumber, totalDays, details, homeTerminal }: P
             opacity={0.5}
           />
           {(() => {
-            // Stagger labels whose anchors sit too close together (e.g. a
-            // post-trip inspection 15 min before the rest) so they stay legible.
-            let prevX = -Infinity
-            let level = 0
-            return remarks.map((seg, i) => {
-              const rx = x(seg.start_min)
-              level = rx - prevX < 30 ? Math.min(level + 1, 2) : 0
-              prevX = rx
-              const ty = REMARKS_Y + 36 + level * 26
-              // Pull far-right labels leftward so the rotated text stays on
-              // the sheet; the bent leader keeps it tied to its time mark.
-              const tx = Math.min(rx, SVG_W - 8 - seg.remark.length * 4.9 * 0.72)
+            // Paper-log style: a tick at each event, nearby events (post-trip +
+            // rest, fuel + break) share one bracket, and the label runs at 45°
+            // like handwriting — city on the first line, activities stacked
+            // beneath it.
+            interface RemarkGroup {
+              lines: string[]
+              xs: number[]
+              lastMin: number
+            }
+            const groups: RemarkGroup[] = []
+            for (const seg of remarks) {
+              const [city, ...rest] = seg.remark.split(' — ')
+              const activity = rest.join(' — ')
+              const last = groups[groups.length - 1]
+              if (last && seg.start_min - last.lastMin <= 60) {
+                last.lines.push(activity || city)
+                last.xs.push(x(seg.start_min))
+                last.lastMin = seg.start_min
+              } else {
+                groups.push({
+                  lines: activity ? [city, activity] : [city],
+                  xs: [x(seg.start_min)],
+                  lastMin: seg.start_min,
+                })
+              }
+            }
+            const barY = REMARKS_Y + 12
+            return groups.map((g, i) => {
+              const ax = (g.xs[0] + g.xs[g.xs.length - 1]) / 2
+              const ty = barY + 12
               return (
                 <g key={i}>
-                  <line x1={rx} y1={REMARKS_Y} x2={rx} y2={ty - 14} stroke={PEN} strokeWidth={1} opacity={0.6} />
-                  <line x1={rx} y1={ty - 14} x2={tx} y2={ty - 5} stroke={PEN} strokeWidth={1} opacity={0.6} />
-                  <text x={tx} y={ty} fontSize={9.5} fill={PEN} transform={`rotate(45 ${tx} ${ty})`}>
-                    {seg.remark}
+                  {g.xs.map((gx, j) => (
+                    <line key={j} x1={gx} y1={REMARKS_Y} x2={gx} y2={barY} stroke={PEN} strokeWidth={1.4} />
+                  ))}
+                  {g.xs.length > 1 && (
+                    <line x1={g.xs[0]} y1={barY} x2={g.xs[g.xs.length - 1]} y2={barY} stroke={PEN} strokeWidth={1.4} />
+                  )}
+                  <text
+                    x={ax}
+                    y={ty}
+                    fontSize={9.5}
+                    fontWeight={600}
+                    fill={PEN}
+                    textAnchor="end"
+                    transform={`rotate(-45 ${ax} ${ty})`}
+                  >
+                    {g.lines.map((line, j) => (
+                      <tspan key={j} x={ax} dy={j === 0 ? 0 : 12}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                 </g>
               )
