@@ -39,7 +39,7 @@ function hourLabel(h: number): string {
 
 export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumber: number; totalDays: number }) {
   const date = new Date(`${log.date}T00:00:00`)
-  const remarks = log.segments.filter((s) => s.remark)
+  const remarks = log.segments.filter((s) => s.remark && s.kind !== 'drive')
   const grandTotal = Object.values(log.totals).reduce((acc, t) => acc + t.minutes, 0)
 
   return (
@@ -112,15 +112,11 @@ export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumb
               {hourLabel(h)}
             </text>
           ))}
-          <text
-            x={TOTALS_X + 28}
-            y={GRID_Y - 8}
-            textAnchor="middle"
-            fontSize={8.5}
-            fontWeight={700}
-            fill={INK}
-          >
-            Total Hours
+          <text x={TOTALS_X + 28} y={GRID_Y - 16} textAnchor="middle" fontSize={8} fontWeight={700} fill={INK}>
+            Total
+          </text>
+          <text x={TOTALS_X + 28} y={GRID_Y - 6} textAnchor="middle" fontSize={8} fontWeight={700} fill={INK}>
+            Hours
           </text>
 
           {/* Row bands + labels */}

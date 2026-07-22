@@ -52,12 +52,8 @@ export function RouteMap({ encodedPolyline, stops }: Props) {
   const visibleStops = stops.filter((s) => s.type !== 'pretrip')
 
   return (
-    <MapContainer
-      center={path[0] ?? [39.5, -95]}
-      zoom={5}
-      scrollWheelZoom
-      className="h-[420px] w-full rounded-lg lg:h-[480px]"
-    >
+    <div className="h-[420px] w-full overflow-hidden rounded-lg border border-border lg:h-[480px]">
+      <MapContainer center={path[0] ?? [39.5, -95]} zoom={5} scrollWheelZoom>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -81,8 +77,9 @@ export function RouteMap({ encodedPolyline, stops }: Props) {
           </Popup>
         </Marker>
       ))}
-      <FitBounds positions={path} />
-    </MapContainer>
+        <FitBounds positions={path} />
+      </MapContainer>
+    </div>
   )
 }
 
