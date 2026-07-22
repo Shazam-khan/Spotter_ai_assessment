@@ -1,5 +1,11 @@
 # ELD Trip Planner — FMCSA HOS-Compliant Routing & Daily Log Generator
 
+**Live app:** <https://spotter-ai-assessment-beta.vercel.app>
+**API:** <https://spotter-ai-assessment-26f6.onrender.com> ([health check](https://spotter-ai-assessment-26f6.onrender.com/health/))
+
+> Note: the API runs on Render's free tier and sleeps when idle — the first request
+> after a quiet period cold-starts in ~50 s (the UI shows a loading state while it wakes).
+
 A full-stack app for property-carrying truck drivers. Enter **current location, pickup, dropoff and the cycle hours already used**, and get back:
 
 1. **A route map** (Leaflet + OpenStreetMap) with markers for every planned stop — pickup 📦, dropoff 🏁, fuel ⛽, 30-min breaks ☕, 10-hr rests 🛏, 34-hr restarts 🔄 — each interpolated onto the actual road polyline.
