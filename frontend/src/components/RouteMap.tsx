@@ -88,6 +88,38 @@ export function RouteMap({ encodedPolyline, stops, theme = 'dark' }: Props) {
   )
 }
 
+/** Build a keyless Google Maps Directions URL for the whole trip.
+ *  Google caps directions at 9 waypoints, so lower-priority stops
+ *  (short breaks) are dropped first on very long trips. */
+export function googleMapsUrl(stops: Stop[]): string {
+  const start = stops.find((s) => s.type === 'start')
+  const dropoff = stops.find((s) => s.type === 'dropoff')
+  const middle = stops.filter((s) => s.type !== 'start' && s.type !== 'dropoff' && s.type !== 'pretrip')
+
+  const PRIORITY: Partial<Record<StopType, number>> = {
+    pickup: 0,
+    restart: 1,
+    rest: 2,
+    fuel: 3,
+    break: 4,
+  }
+  const kept = [...middle]
+    .sort((a, b) => (PRIORITY[a.type] ?? 9) - (PRIORITY[b.type] ?? 9))
+    .slice(0, 9)
+    // restore chronological order so the route flows correctly
+    .sort((a, b) => a.arrival.localeCompare(b.arrival))
+
+  const fmt = (s: Stop) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)}`
+  const params = new URLSearchParams({
+    api: '1',
+    travelmode: 'driving',
+    origin: start ? fmt(start) : '',
+    destination: dropoff ? fmt(dropoff) : '',
+    waypoints: kept.map(fmt).join('|'),
+  })
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
 export function MapLegend() {
   const entries = (Object.keys(STOP_META) as StopType[]).filter((t) => t !== 'pretrip')
   return (

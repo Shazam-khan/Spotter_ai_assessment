@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Activity,
   AlertCircle,
+  ExternalLink,
   FileText,
   Map as MapIcon,
   Moon,
@@ -16,7 +17,7 @@ import { planTrip } from '@/lib/api'
 import { TripForm } from '@/components/TripForm'
 import { TripSummary } from '@/components/TripSummary'
 import { TripTimeline } from '@/components/TripTimeline'
-import { RouteMap, MapLegend } from '@/components/RouteMap'
+import { RouteMap, MapLegend, googleMapsUrl } from '@/components/RouteMap'
 import { LogSheet } from '@/components/LogSheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -205,11 +206,15 @@ export default function App() {
                 </section>
 
                 <Card className="fade-up no-print" style={{ animationDelay: '60ms' }}>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <MapIcon className="size-4 text-primary" />
                       Route &amp; Planned Stops
                     </CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => window.open(googleMapsUrl(result.stops), '_blank', 'noopener')}>
+                      <ExternalLink />
+                      Open in Google Maps
+                    </Button>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <RouteMap encodedPolyline={result.route.polyline} stops={result.stops} theme={theme} />
