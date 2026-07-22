@@ -31,6 +31,8 @@ React (Vite + Tailwind + shadcn-style UI)          Django + DRF
 | **70-hr / 8-day cycle** | Driving + on-duty time consume `70 − current_cycle_used`. If exhausted mid-trip → automatic 34-hr restart. |
 | **Fuel** | 30-min on-duty stop at least every 1,000 miles. |
 | **Pickup / dropoff** | 1 hr on-duty each; 30-min on-duty pre-trip inspection at trip start. |
+| **Inspections** | 15-min on-duty post-trip inspection before every 10-hr rest and a 15-min pre-trip inspection when a new shift starts (matching the FMCSA example logs), so every duty-status change carries a city/state remark. |
+| **Recap** | Each log sheet carries the 70-hr/8-day Recap block — A: on-duty hours today (lines 3 & 4), B: total on duty last 8 days, C: hours available tomorrow (70 − B) — with restarts resetting B to the hours accrued since. |
 
 A mid-leg interruption (break/rest/fuel) resumes the same leg afterwards — no mileage is dropped, and every stop's map coordinate is interpolated along the route polyline at the exact mileage where it occurs.
 
@@ -81,7 +83,11 @@ Returns `{ route: {polyline, distance_miles, duration_hrs}, stops: [...], logs: 
 
 - Trip start time is user-selectable (defaults to 08:00); it and all leg drive times are snapped to a 15-minute lattice so every log-grid boundary lands on a quarter hour and each sheet's totals sum to exactly 24:00.
 - Average speed derives from OSRM's route duration; no traffic modeling.
-- 10-hr rests are logged as **Off Duty** (no sleeper-berth split).
+- 10-hr rests are logged as **Off Duty** by design (no sleeper-berth split) — the Sleeper Berth row is intentionally 0:00 on every sheet.
+- The trip's prior cycle hours (the "current cycle used" input) are treated as fixed history: hours do not roll off the 8-day window mid-trip (conservative). The Recap's "total on duty last 8 days" is that input plus trip accrual, reset by a 34-hr restart.
+- Main office and home terminal addresses on the sheets default to the trip's starting city; carrier/driver/truck details are user-editable in the form (demo values fill any blanks).
+- The trip "end time" shown is **dropoff completion** — arrival plus the 1-hr unload block.
+- A 34-hr restart spanning a full calendar day produces an all-Off-Duty sheet with a "34-hour restart (continued)" remark.
 - Fuel stops are 30 min on-duty; pre-trip inspection is 30 min on-duty at trip start; post-trip is rolled into the dropoff hour.
 - Single driver, no co-driver, no adverse-driving-conditions extension.
 - One (home-terminal) timezone is used for the entire log, per the FMCSA "time base" rule.

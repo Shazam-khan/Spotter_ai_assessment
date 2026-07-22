@@ -51,10 +51,11 @@ class DailyLogTests(SimpleTestCase):
             [Leg("to_pickup", 55.0, 1.0, "pickup"), Leg("to_dropoff", 600.0, 11.0, "dropoff")]
         )
         day1 = logs[0]["totals"]
-        # Off duty: 00:00–08:00 pad + 30-min break + 21:00–24:00 rest start = 11:30
-        self.assertEqual(day1["off_duty"]["label"], "11:30")
+        # Off duty: 00:00–08:00 pad + 30-min break + 21:15–24:00 rest start = 11:15
+        self.assertEqual(day1["off_duty"]["label"], "11:15")
         self.assertEqual(day1["driving"]["label"], "11:00")
-        self.assertEqual(day1["on_duty"]["label"], "1:30")
+        # On duty: 0:30 pre-trip + 1:00 pickup + 0:15 post-trip = 1:45
+        self.assertEqual(day1["on_duty"]["label"], "1:45")
         self.assertEqual(day1["sleeper"]["label"], "0:00")
 
     def test_segment_boundaries_on_15_min_lattice(self):
@@ -75,6 +76,19 @@ class DailyLogTests(SimpleTestCase):
         day2_first = logs[1]["segments"][0]
         self.assertEqual(day2_first["status"], "off_duty")
         self.assertEqual(day2_first["remark"], "")
+
+    def test_full_restart_day_gets_continued_remark(self):
+        """A 34-hr restart spanning an entire calendar day yields a clean
+        all-off-duty sheet whose remark explains it."""
+        late_start = datetime(2026, 1, 5, 20, 0)
+        segments = simulate_trip([Leg("d", 110.0, 2.0, "dropoff")], 70.0, late_start)
+        logs = build_daily_logs(segments)
+        # Restart runs Jan 5 20:00 → Jan 7 06:00, so Jan 6 is fully off duty.
+        jan6 = next(sheet for sheet in logs if sheet["date"] == "2026-01-06")
+        self.assertEqual(jan6["totals"]["off_duty"]["minutes"], 24 * 60)
+        self.assertEqual(len(jan6["segments"]), 1)
+        self.assertIn("(continued)", jan6["segments"][0]["remark"])
+        self.assertEqual(jan6["total_miles_driving"], 0.0)
 
     def test_daily_driving_miles_split_across_days(self):
         logs = self._logs(

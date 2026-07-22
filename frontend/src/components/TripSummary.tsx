@@ -70,7 +70,11 @@ export function TripSummary({ summary }: { summary: TripSummaryData }) {
           <div className="mx-1 mt-2 hidden h-px w-10 shrink-0 bg-gradient-to-r from-primary/60 via-primary/25 to-primary/60 sm:block" />
           <RouteNode city={summary.locations.pickup} caption="Pickup · 1 hr on-duty" />
           <div className="mx-1 mt-2 hidden h-px w-10 shrink-0 bg-gradient-to-r from-primary/60 via-primary/25 to-[#0ca30c]/60 sm:block" />
-          <RouteNode city={summary.locations.dropoff} caption={`Arrive ${formatDateTimeShort(summary.end_time)}`} last />
+          <RouteNode
+            city={summary.locations.dropoff}
+            caption={`Dropoff complete ${formatDateTimeShort(summary.end_time)} (incl. 1 hr unload)`}
+            last
+          />
         </div>
       </div>
 

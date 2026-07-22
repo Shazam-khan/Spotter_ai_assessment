@@ -39,7 +39,10 @@ class WorkedExampleTests(SimpleTestCase):
     def test_event_sequence(self):
         self.assertEqual(
             kinds(self.segments),
-            ["pretrip", "drive", "pickup", "drive", "break", "drive", "rest", "drive", "dropoff"],
+            [
+                "pretrip", "drive", "pickup", "drive", "break", "drive",
+                "posttrip", "rest", "pretrip_daily", "drive", "dropoff",
+            ],
         )
 
     def test_break_after_8_cumulative_driving_hours(self):
@@ -59,11 +62,16 @@ class WorkedExampleTests(SimpleTestCase):
         )
         self.assertAlmostEqual(driven_before, C.MAX_DRIVING_PER_SHIFT)
         self.assertAlmostEqual(rest.hours, C.DAILY_REST)
-        self.assertEqual(rest.start, datetime(2026, 1, 5, 21, 0))
+        # Driving caps at 21:00; a 15-min post-trip inspection precedes the rest.
+        self.assertEqual(rest.start, datetime(2026, 1, 5, 21, 15))
+        posttrip = next(s for s in self.segments if s.kind == "posttrip")
+        self.assertEqual(posttrip.start, datetime(2026, 1, 5, 21, 0))
 
-    def test_remaining_driving_resumes_next_day(self):
+    def test_remaining_driving_resumes_next_day_after_pretrip(self):
+        pretrip2 = next(s for s in self.segments if s.kind == "pretrip_daily")
+        self.assertEqual(pretrip2.start, datetime(2026, 1, 6, 7, 15))
         last_drive = [s for s in self.segments if s.kind == "drive"][-1]
-        self.assertEqual(last_drive.start, datetime(2026, 1, 6, 7, 0))
+        self.assertEqual(last_drive.start, datetime(2026, 1, 6, 7, 30))
         self.assertAlmostEqual(last_drive.hours, 1.0)
 
     def test_no_mileage_dropped(self):
@@ -107,7 +115,10 @@ class WindowTests(SimpleTestCase):
         )
         # 11-hr driving limit NOT reached — the 14-hr window forced the rest.
         self.assertAlmostEqual(driven_before, 10.0)
-        self.assertEqual((rest.start - START).total_seconds() / 3600.0, C.MAX_WINDOW)
+        # Driving ceased exactly at the 14th hour (post-trip inspection after
+        # the window closes is legal — it just isn't driving).
+        last_drive_end = max(s.end for s in segments if s.status == DRIVING and s.end <= rest.start)
+        self.assertEqual((last_drive_end - START).total_seconds() / 3600.0, C.MAX_WINDOW)
 
     def test_break_does_not_pause_window(self):
         """The 30-min break consumes window time: driving must stop 14 wall
@@ -124,7 +135,8 @@ class WindowTests(SimpleTestCase):
         self.assertLess(brk.start, rest.start)
         # Wall clock from on-duty start to when driving ceased == exactly 14 hrs
         # even though only 13.5 hrs were "productive" (0.5 was the break).
-        self.assertEqual((rest.start - START).total_seconds() / 3600.0, 14.0)
+        last_drive_end = max(s.end for s in segments if s.status == DRIVING and s.end <= rest.start)
+        self.assertEqual((last_drive_end - START).total_seconds() / 3600.0, 14.0)
 
 
 class CycleTests(SimpleTestCase):
@@ -152,7 +164,7 @@ class CycleTests(SimpleTestCase):
         driving chunk must then trigger a restart even though the driver has
         driven 0 hrs."""
         segments = simulate_trip([Leg("d", 55.0, 1.0, "dropoff")], 69.5, START)
-        self.assertEqual(kinds(segments)[:3], ["pretrip", "restart", "drive"])
+        self.assertEqual(kinds(segments)[:4], ["pretrip", "restart", "pretrip_daily", "drive"])
 
 
 class FuelTests(SimpleTestCase):

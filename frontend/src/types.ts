@@ -27,11 +27,33 @@ export interface LogSegment {
   remark: string
 }
 
+export interface Recap {
+  on_duty_today: string
+  total_last_8_days: number
+  available_tomorrow: number
+  restart_completed: boolean
+}
+
 export interface DailyLog {
   date: string
   segments: LogSegment[]
   totals: Record<DutyStatus, { minutes: number; label: string }>
   total_miles_driving: number
+  start_miles: number
+  end_miles: number
+  from_location: string
+  to_location: string
+  recap: Recap
+}
+
+/** Client-side header details for the log sheets (not sent to the API). */
+export interface TripDetails {
+  driver_name: string
+  carrier_name: string
+  truck_number: string
+  trailer_number: string
+  shipper: string
+  commodity: string
 }
 
 export interface TripSummaryData {

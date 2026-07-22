@@ -45,6 +45,8 @@ def build_daily_logs(segments: list[Segment]) -> list[dict]:
         day_segments = []
         totals_min = {status: 0 for status in STATUSES}
         miles_driving = 0.0
+        start_miles: float | None = None
+        end_miles = 0.0
 
         cursor = day_start
         for seg in segments:
@@ -68,22 +70,32 @@ def build_daily_logs(segments: list[Segment]) -> list[dict]:
             start_min = _minutes_since_midnight(clip_start)
             dur_min = int((clip_end - clip_start).total_seconds() // 60)
             carried = seg.start < day_start
+            # Remarks flag only where the status change happens — except a
+            # segment covering the whole sheet (e.g. a 34-hr restart day),
+            # which gets its remark back so the sheet isn't unexplained.
+            if carried:
+                remark = f"{seg.remark} (continued)" if dur_min == 24 * 60 and seg.remark else ""
+            else:
+                remark = seg.remark
             day_segments.append(
                 {
                     "status": seg.status,
                     "kind": seg.kind,
                     "start_min": start_min,
                     "end_min": start_min + dur_min,
-                    # Remarks flag only where the status change happens.
-                    "remark": "" if carried else seg.remark,
+                    "remark": remark,
                 }
             )
             totals_min[seg.status] += dur_min
+            seg_seconds = (seg.end - seg.start).total_seconds()
+            start_frac = (clip_start - seg.start).total_seconds() / seg_seconds if seg_seconds else 0
+            end_frac = (clip_end - seg.start).total_seconds() / seg_seconds if seg_seconds else 1
+            seg_span = seg.end_miles - seg.start_miles
+            if start_miles is None:
+                start_miles = seg.start_miles + seg_span * start_frac
+            end_miles = seg.start_miles + seg_span * end_frac
             if seg.status == DRIVING and seg.hours > 0:
-                fraction = (clip_end - clip_start).total_seconds() / (
-                    (seg.end - seg.start).total_seconds()
-                )
-                miles_driving += (seg.end_miles - seg.start_miles) * fraction
+                miles_driving += seg_span * (end_frac - start_frac)
             cursor = clip_end
 
         # Pad the tail of the day (trip finished before midnight).
@@ -130,6 +142,8 @@ def build_daily_logs(segments: list[Segment]) -> list[dict]:
                     for status in STATUSES
                 },
                 "total_miles_driving": round(miles_driving, 1),
+                "start_miles": round(start_miles or 0.0, 1),
+                "end_miles": round(end_miles, 1),
             }
         )
         day += timedelta(days=1)

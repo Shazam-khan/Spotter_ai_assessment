@@ -1,4 +1,4 @@
-"""Pure-Python FMCSA Hours-of-Service trip simulator.
+﻿"""Pure-Python FMCSA Hours-of-Service trip simulator.
 
 Walks the trip's driving legs in event chunks and emits a timeline of
 duty-status segments, inserting 30-min breaks, 10-hr rests, fuel stops and
@@ -53,6 +53,7 @@ class _State:
     cycle_remaining: float = C.CYCLE_LIMIT
     miles: float = 0.0
     miles_since_fuel: float = 0.0
+    pending_pretrip: bool = False  # daily pre-trip owed after a rest/restart
     segments: list[Segment] = field(default_factory=list)
 
 
@@ -97,10 +98,15 @@ def simulate_trip(
         s.window_elapsed += hours
 
     def take_rest():
+        # Post-trip inspection before shutting down (as the FMCSA example logs
+        # do), unless the cycle can't absorb it.
+        if s.cycle_remaining >= C.DAILY_INSPECTION - C.EPS:
+            emit(ON_DUTY, "posttrip", C.DAILY_INSPECTION, "Post-trip/TIV")
         emit(OFF_DUTY, "rest", C.DAILY_REST, "10-hour rest")
         s.driving_since_rest = 0.0
         s.window_elapsed = 0.0
         s.driving_since_break = 0.0
+        s.pending_pretrip = True
 
     def take_restart():
         emit(OFF_DUTY, "restart", C.CYCLE_RESTART, "34-hour restart")
@@ -108,6 +114,7 @@ def simulate_trip(
         s.driving_since_rest = 0.0
         s.window_elapsed = 0.0
         s.driving_since_break = 0.0
+        s.pending_pretrip = True
 
     def ensure_cycle(hours: float):
         """Guarantee enough cycle hours for an upcoming on-duty task."""
@@ -116,7 +123,8 @@ def simulate_trip(
 
     # Pre-trip inspection at the very start of the trip.
     ensure_cycle(C.PRETRIP_DURATION)
-    emit(ON_DUTY, "pretrip", C.PRETRIP_DURATION, "Pre-trip inspection (TIV)")
+    emit(ON_DUTY, "pretrip", C.PRETRIP_DURATION, "Pre-trip/TIV")
+    s.pending_pretrip = False  # trip-start inspection covers the first shift
 
     guard = 0
     for leg in legs:
@@ -127,6 +135,13 @@ def simulate_trip(
             guard += 1
             if guard > 10_000:
                 raise RuntimeError("HOS simulation failed to converge")
+
+            # Daily pre-trip inspection before the first drive of a new shift.
+            if s.pending_pretrip:
+                if s.cycle_remaining >= C.DAILY_INSPECTION - C.EPS:
+                    emit(ON_DUTY, "pretrip_daily", C.DAILY_INSPECTION, "Pre-trip/TIV")
+                s.pending_pretrip = False
+                continue
 
             # Fuel stop due? (every 1,000 miles, before driving on)
             if s.miles_since_fuel >= C.FUEL_INTERVAL_MILES - C.EPS:
@@ -177,7 +192,7 @@ def simulate_trip(
                     take_rest()
                 continue
 
-            emit(DRIVING, "drive", chunk, "Driving", miles_delta=chunk * speed)
+            emit(DRIVING, "drive", chunk, "", miles_delta=chunk * speed)
             s.driving_since_rest += chunk
             s.driving_since_break += chunk
             s.miles_since_fuel += chunk * speed

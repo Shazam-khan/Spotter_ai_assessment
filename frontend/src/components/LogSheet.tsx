@@ -1,4 +1,4 @@
-import type { DailyLog, DutyStatus } from '@/types'
+import type { DailyLog, DutyStatus, TripDetails } from '@/types'
 
 const ROW_ORDER: DutyStatus[] = ['off_duty', 'sleeper', 'driving', 'on_duty']
 const ROW_LABELS: Record<DutyStatus, [string, string?]> = {
@@ -16,7 +16,7 @@ const ROW_H = 40
 const GRID_H = ROW_H * 4
 const TOTALS_X = GRID_X + GRID_W + 10
 const REMARKS_Y = GRID_Y + GRID_H
-const REMARKS_H = 148
+const REMARKS_H = 205
 const SVG_W = 990
 const SVG_H = REMARKS_Y + REMARKS_H
 
@@ -37,14 +37,50 @@ function hourLabel(h: number): string {
   return String(h % 12)
 }
 
-export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumber: number; totalDays: number }) {
+function Field({ value, label, mono }: { value: string; label: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className={`truncate text-sm font-semibold text-slate-900 ${mono ? 'font-mono' : ''}`}>
+        {value || '—'}
+      </div>
+      <div className="truncate border-t border-slate-300 pt-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+function MileBox({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex-1">
+      <div className="rounded-sm border border-slate-400 px-2 py-1.5 text-center font-mono text-sm font-semibold text-slate-900">
+        {value}
+      </div>
+      <div className="mt-0.5 text-center text-[10px] uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+interface Props {
+  log: DailyLog
+  dayNumber: number
+  totalDays: number
+  details: TripDetails
+  homeTerminal: string
+}
+
+export function LogSheet({ log, dayNumber, totalDays, details, homeTerminal }: Props) {
   const date = new Date(`${log.date}T00:00:00`)
-  const remarks = log.segments.filter((s) => s.remark && s.kind !== 'drive')
+  const remarks = log.segments.filter((s) => s.remark)
   const grandTotal = Object.values(log.totals).reduce((acc, t) => acc + t.minutes, 0)
+  const dayMiles = Math.round(log.total_miles_driving)
+  const pad = (n: number) => n.toString().padStart(2, '0')
 
   return (
     <div className="log-sheet-page overflow-hidden rounded-lg bg-[#fdfdfa] shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
-      {/* Paper header */}
+      {/* ── Paper header ─────────────────────────────────────────────── */}
       <div className="border-b border-slate-300 px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -52,45 +88,65 @@ export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumb
               Driver&rsquo;s Daily Log
               <span className="ml-2 text-xs font-medium text-slate-500">(24 hours)</span>
             </h3>
-            <p className="mt-0.5 text-sm font-medium text-slate-600">
-              {date.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
+            <div className="mt-1 flex items-end gap-1 font-mono text-sm font-semibold text-slate-900">
+              <span className="border-b border-slate-400 px-1">{pad(date.getMonth() + 1)}</span>/
+              <span className="border-b border-slate-400 px-1">{pad(date.getDate())}</span>/
+              <span className="border-b border-slate-400 px-1">{date.getFullYear()}</span>
+              <span className="ml-2 text-[10px] font-sans font-normal uppercase tracking-wide text-slate-500">
+                (month) (day) (year)
+              </span>
+            </div>
           </div>
-          <div className="text-right text-xs text-slate-500">
-            <div className="font-semibold text-slate-700">
+          <div className="text-right text-[10px] leading-4 text-slate-500">
+            <div className="text-xs font-semibold text-slate-700">
               Sheet {dayNumber} of {totalDays}
             </div>
-            <div>Original — file at home terminal</div>
+            <div>Original — file at home terminal.</div>
+            <div>Duplicate — driver retains in possession for 8 days.</div>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-slate-600 sm:grid-cols-4">
-          <div>
-            <div className="font-mono text-sm font-semibold text-slate-900">
-              {Math.round(log.total_miles_driving)} mi
+
+        {/* From / To */}
+        <div className="mt-3 grid grid-cols-2 gap-x-6">
+          <Field value={log.from_location} label="From" />
+          <Field value={log.to_location} label="To" />
+        </div>
+
+        {/* Mileage / carrier / addresses */}
+        <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
+          <div className="flex gap-2">
+            <MileBox value={String(dayMiles)} label="Total miles driving today" />
+            <MileBox value={String(dayMiles)} label="Total mileage today" />
+          </div>
+          <Field value={details.carrier_name} label="Name of carrier or carriers" />
+          <Field
+            value={`${details.truck_number} / ${details.trailer_number}`}
+            label="Truck/tractor & trailer numbers"
+            mono
+          />
+          <Field value={homeTerminal} label="Main office address" />
+          <Field value={homeTerminal} label="Home terminal address" />
+          <Field value={`${details.shipper} — ${details.commodity}`} label="Shipper & commodity" />
+        </div>
+
+        {/* Signature row */}
+        <div className="mt-3 grid grid-cols-2 gap-x-6">
+          <div className="min-w-0">
+            <div
+              className="truncate text-lg leading-6 text-slate-800"
+              style={{ fontFamily: '"Segoe Script", "Brush Script MT", cursive' }}
+            >
+              {details.driver_name || ' '}
             </div>
-            <div className="border-t border-slate-300 pt-0.5">Total miles driving today</div>
+            <div className="border-t border-slate-400 pt-0.5 text-[10px] uppercase leading-tight tracking-wide text-slate-500">
+              Driver&rsquo;s signature in full — I certify these entries are true and correct
+            </div>
           </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-900">Property Carrier</div>
-            <div className="border-t border-slate-300 pt-0.5">Name of carrier</div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-900">70 hr / 8 day</div>
-            <div className="border-t border-slate-300 pt-0.5">Cycle rule</div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-900">N/A</div>
-            <div className="border-t border-slate-300 pt-0.5">Co-driver</div>
-          </div>
+          <Field value="N/A" label="Name of co-driver" />
         </div>
       </div>
 
-      {/* The 24-hour grid */}
+      {/* ── The 24-hour grid ─────────────────────────────────────────── */}
       <div className="overflow-x-auto">
         <svg
           viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -268,24 +324,72 @@ export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumb
             strokeWidth={0.8}
             opacity={0.5}
           />
-          {remarks.map((seg, i) => {
-            const rx = x(seg.start_min)
-            return (
-              <g key={i}>
-                <line x1={rx} y1={REMARKS_Y} x2={rx} y2={REMARKS_Y + 30} stroke={PEN} strokeWidth={1} opacity={0.6} />
-                <text
-                  x={rx}
-                  y={REMARKS_Y + 36}
-                  fontSize={9.5}
-                  fill={PEN}
-                  transform={`rotate(38 ${rx} ${REMARKS_Y + 36})`}
-                >
-                  {seg.remark}
-                </text>
-              </g>
-            )
-          })}
+          {(() => {
+            // Stagger labels whose anchors sit too close together (e.g. a
+            // post-trip inspection 15 min before the rest) so they stay legible.
+            let prevX = -Infinity
+            let level = 0
+            return remarks.map((seg, i) => {
+              const rx = x(seg.start_min)
+              level = rx - prevX < 30 ? Math.min(level + 1, 2) : 0
+              prevX = rx
+              const ty = REMARKS_Y + 36 + level * 26
+              // Pull far-right labels leftward so the rotated text stays on
+              // the sheet; the bent leader keeps it tied to its time mark.
+              const tx = Math.min(rx, SVG_W - 8 - seg.remark.length * 4.9 * 0.72)
+              return (
+                <g key={i}>
+                  <line x1={rx} y1={REMARKS_Y} x2={rx} y2={ty - 14} stroke={PEN} strokeWidth={1} opacity={0.6} />
+                  <line x1={rx} y1={ty - 14} x2={tx} y2={ty - 5} stroke={PEN} strokeWidth={1} opacity={0.6} />
+                  <text x={tx} y={ty} fontSize={9.5} fill={PEN} transform={`rotate(45 ${tx} ${ty})`}>
+                    {seg.remark}
+                  </text>
+                </g>
+              )
+            })
+          })()}
         </svg>
+      </div>
+
+      {/* ── 70-hr / 8-day recap ──────────────────────────────────────── */}
+      <div className="border-t border-slate-300 px-5 py-3">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
+            Recap
+            <span className="ml-1 font-medium normal-case text-slate-500">— 70 hour / 8 day</span>
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-2">
+            <div>
+              <div className="font-mono text-sm font-semibold text-slate-900">
+                {log.recap.on_duty_today}
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                A. On-duty hours today (lines 3 &amp; 4)
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-sm font-semibold text-slate-900">
+                {log.recap.total_last_8_days.toFixed(2)} hr
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                B. Total on duty last 8 days
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-sm font-semibold text-slate-900">
+                {log.recap.available_tomorrow.toFixed(2)} hr
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                C. Hours available tomorrow (70 − B)
+              </div>
+            </div>
+          </div>
+          {log.recap.restart_completed && (
+            <span className="rounded-full border border-emerald-600/40 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+              34-hr restart completed — cycle reset to a fresh 70
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

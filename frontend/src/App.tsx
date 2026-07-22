@@ -9,7 +9,7 @@ import {
   Truck,
 } from 'lucide-react'
 
-import type { PlanTripRequest, PlanTripResponse } from '@/types'
+import type { PlanTripRequest, PlanTripResponse, TripDetails } from '@/types'
 import { planTrip } from '@/lib/api'
 import { TripForm } from '@/components/TripForm'
 import { TripSummary } from '@/components/TripSummary'
@@ -71,14 +71,33 @@ function EmptyCard() {
   )
 }
 
+const DEMO_DETAILS: TripDetails = {
+  driver_name: 'Sam Carter',
+  carrier_name: 'Spotter Freight Lines',
+  truck_number: 'TRK-1024',
+  trailer_number: 'TRL-5088',
+  shipper: 'Acme Distribution',
+  commodity: 'General freight',
+}
+
 export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PlanTripResponse | null>(null)
+  const [details, setDetails] = useState<TripDetails>(DEMO_DETAILS)
 
-  const handleSubmit = async (req: PlanTripRequest) => {
+  const handleSubmit = async (req: PlanTripRequest, formDetails: TripDetails) => {
     setLoading(true)
     setError(null)
+    // Blank fields fall back to demo values so the log header is never empty.
+    setDetails({
+      driver_name: formDetails.driver_name.trim() || DEMO_DETAILS.driver_name,
+      carrier_name: formDetails.carrier_name.trim() || DEMO_DETAILS.carrier_name,
+      truck_number: formDetails.truck_number.trim() || DEMO_DETAILS.truck_number,
+      trailer_number: formDetails.trailer_number.trim() || DEMO_DETAILS.trailer_number,
+      shipper: formDetails.shipper.trim() || DEMO_DETAILS.shipper,
+      commodity: formDetails.commodity.trim() || DEMO_DETAILS.commodity,
+    })
     try {
       setResult(await planTrip(req))
     } catch (e) {
@@ -179,7 +198,14 @@ export default function App() {
                     </Button>
                   </div>
                   {result.logs.map((log, i) => (
-                    <LogSheet key={log.date} log={log} dayNumber={i + 1} totalDays={result.logs.length} />
+                    <LogSheet
+                      key={log.date}
+                      log={log}
+                      dayNumber={i + 1}
+                      totalDays={result.logs.length}
+                      details={details}
+                      homeTerminal={result.summary.locations.current}
+                    />
                   ))}
                 </section>
               </>

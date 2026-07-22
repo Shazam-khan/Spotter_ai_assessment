@@ -13,7 +13,9 @@ from .serializers import PlanTripRequestSerializer
 from .services.geocoding import GeocodingError, city_for, geocode
 from .services.routing import RouteLocator, RoutingError, fetch_route
 
-INTERPOLATED_KINDS = {"fuel", "break", "rest", "restart"}
+INTERPOLATED_KINDS = {"fuel", "break", "rest", "restart", "posttrip", "pretrip_daily"}
+# Inspections happen at the same spot as the rest they bracket — no own marker.
+NO_MARKER_KINDS = {"posttrip", "pretrip_daily"}
 
 
 def _snap_quarter_hour(dt: datetime) -> datetime:
@@ -100,6 +102,8 @@ class PlanTripView(APIView):
                     "dropoff": (dropoff["lat"], dropoff["lon"]),
                 }[seg.kind]
                 seg.remark = f"{place_by_kind[seg.kind]} — {seg.remark}"
+            if seg.kind in NO_MARKER_KINDS:
+                continue
             stops.append(
                 {
                     "type": seg.kind,
@@ -112,6 +116,44 @@ class PlanTripView(APIView):
             )
 
         logs = build_daily_logs(segments)
+
+        def place_at_miles(miles: float) -> str:
+            if miles <= 0.5:
+                return place_by_kind["pretrip"]
+            if miles >= route["distance_miles"] - 0.5:
+                return place_by_kind["dropoff"]
+            lat, lng = locator.point_at(miles)
+            return city_for(lat, lng) or f"Mile {miles:.0f}"
+
+        # Per-sheet From/To and the 70-hr/8-day recap (A: on-duty today,
+        # B: total on duty last 8 days, C: hours available tomorrow).
+        cycle = data["current_cycle_used"]
+        for sheet in logs:
+            sheet["from_location"] = place_at_miles(sheet["start_miles"])
+            sheet["to_location"] = place_at_miles(sheet["end_miles"])
+
+            day_start = datetime.fromisoformat(sheet["date"])
+            day_end = day_start + timedelta(days=1)
+            restart_completed = False
+            for seg in segments:
+                clip_start = max(seg.start, day_start)
+                clip_end = min(seg.end, day_end)
+                if clip_end <= clip_start:
+                    continue
+                if seg.kind == "restart" and day_start < seg.end <= day_end:
+                    cycle = 0.0  # restart completed this day → fresh 70
+                    restart_completed = True
+                elif seg.status in (DRIVING, ON_DUTY):
+                    cycle += (clip_end - clip_start).total_seconds() / 3600.0
+            on_duty_today_min = (
+                sheet["totals"]["driving"]["minutes"] + sheet["totals"]["on_duty"]["minutes"]
+            )
+            sheet["recap"] = {
+                "on_duty_today": f"{on_duty_today_min // 60}:{on_duty_today_min % 60:02d}",
+                "total_last_8_days": round(cycle, 2),
+                "available_tomorrow": round(max(C.CYCLE_LIMIT - cycle, 0.0), 2),
+                "restart_completed": restart_completed,
+            }
 
         driving_hrs = sum(seg.hours for seg in segments if seg.status == DRIVING)
         on_duty_hrs = sum(seg.hours for seg in segments if seg.status == ON_DUTY)
