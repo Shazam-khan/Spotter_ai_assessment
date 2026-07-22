@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity,
   AlertCircle,
   FileText,
   Map as MapIcon,
+  Moon,
   Printer,
   ShieldCheck,
+  Sun,
   Truck,
 } from 'lucide-react'
 
@@ -28,8 +30,8 @@ function LoadingCard() {
             <Truck className="size-10" />
           </div>
           <svg viewBox="0 0 224 8" className="mt-2 w-full">
-            <line x1="0" y1="4" x2="224" y2="4" stroke="#2a3348" strokeWidth="2" />
-            <line x1="0" y1="4" x2="224" y2="4" stroke="#3987e5" strokeWidth="2" className="road-line" />
+            <line x1="0" y1="4" x2="224" y2="4" strokeWidth="2" style={{ stroke: 'var(--color-input)' }} />
+            <line x1="0" y1="4" x2="224" y2="4" strokeWidth="2" className="road-line" style={{ stroke: 'var(--color-primary)' }} />
           </svg>
         </div>
         <div>
@@ -80,11 +82,45 @@ const DEMO_DETAILS: TripDetails = {
   commodity: 'General freight',
 }
 
+type Theme = 'dark' | 'light'
+
+function ThemeToggle({ theme, onToggle }: { theme: Theme; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      className="relative flex h-8 w-[3.75rem] items-center rounded-full border border-border bg-secondary transition-colors hover:border-ring/50"
+    >
+      <span
+        className="absolute left-1 flex size-6 items-center justify-center rounded-full bg-card shadow-md transition-transform duration-300"
+        style={{ transform: theme === 'dark' ? 'translateX(0)' : 'translateX(1.65rem)' }}
+      >
+        {theme === 'dark' ? (
+          <Moon className="size-3.5 text-primary" />
+        ) : (
+          <Sun className="size-3.5 text-[#eda100]" />
+        )}
+      </span>
+      <Moon className="absolute left-2.5 size-3 text-muted-foreground/40" />
+      <Sun className="absolute right-2.5 size-3 text-muted-foreground/40" />
+    </button>
+  )
+}
+
 export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PlanTripResponse | null>(null)
   const [details, setDetails] = useState<TripDetails>(DEMO_DETAILS)
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem('eld-theme') as Theme) || 'dark',
+  )
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('eld-theme', theme)
+  }, [theme])
 
   const handleSubmit = async (req: PlanTripRequest, formDetails: TripDetails) => {
     setLoading(true)
@@ -110,30 +146,40 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="no-print sticky top-0 z-40 border-b border-border bg-background/75 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#1c5cab] text-primary-foreground shadow-[0_0_20px_rgba(57,135,229,0.35)]">
-              <Truck className="size-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight tracking-tight">ELD Trip Planner</h1>
-              <p className="text-xs text-muted-foreground">
+      <header className="no-print sticky top-0 z-40 bg-background/75 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="ELD Trip Planner logo"
+              className="size-11 shrink-0 rounded-xl shadow-[0_4px_18px_rgba(42,120,214,0.45)] transition-transform duration-300 hover:scale-105"
+            />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight tracking-tight">
+                ELD Trip Planner
+                <span className="ml-2 hidden rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider text-primary md:inline">
+                  HOS
+                </span>
+              </h1>
+              <p className="truncate text-xs text-muted-foreground">
                 Hours-of-Service compliant routing &amp; daily log generator
               </p>
             </div>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground">
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="hidden items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground lg:inline-flex">
               <ShieldCheck className="size-3.5 text-[#0ca30c]" />
               FMCSA Part 395
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground">
+            <span className="hidden items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground sm:inline-flex">
               <Activity className="size-3.5 text-primary" />
               70 hr / 8 day
             </span>
+            <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
+            <ThemeToggle theme={theme} onToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
           </div>
         </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -166,7 +212,7 @@ export default function App() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <RouteMap encodedPolyline={result.route.polyline} stops={result.stops} />
+                    <RouteMap encodedPolyline={result.route.polyline} stops={result.stops} theme={theme} />
                     <MapLegend />
                   </CardContent>
                 </Card>

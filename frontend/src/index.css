@@ -39,6 +39,29 @@ html {
   color-scheme: dark;
 }
 
+/* ── Light theme: same roles, light-surface values ─────────────────── */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-background: #f3f5f9;
+  --color-foreground: #1c2536;
+  --color-card: #ffffff;
+  --color-card-foreground: #1c2536;
+  --color-panel: #ffffff;
+  --color-primary: #2a78d6;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e9eef6;
+  --color-secondary-foreground: #33415c;
+  --color-muted: #edf0f6;
+  --color-muted-foreground: #5c6a84;
+  --color-accent: #e2ebf7;
+  --color-accent-foreground: #1c3a66;
+  --color-destructive: #d03b3b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(28, 45, 80, 0.13);
+  --color-input: rgba(28, 45, 80, 0.22);
+  --color-ring: #2a78d6;
+}
+
 body {
   font-family: var(--font-sans);
   color: var(--color-foreground);
@@ -48,6 +71,25 @@ body {
     radial-gradient(ellipse 50% 35% at 90% -5%, rgba(217, 89, 38, 0.08), transparent 70%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 250ms ease, color 250ms ease;
+}
+
+:root[data-theme='light'] body {
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% -10%, rgba(42, 120, 214, 0.1), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 90% -5%, rgba(235, 104, 52, 0.06), transparent 70%);
+}
+
+:root[data-theme='light'] ::selection {
+  background: rgba(42, 120, 214, 0.25);
+}
+
+:root[data-theme='light'] *::-webkit-scrollbar-thumb {
+  background: #c2cbdb;
+  border-color: var(--color-background);
+}
+:root[data-theme='light'] *::-webkit-scrollbar-thumb:hover {
+  background: #a8b4c9;
 }
 
 ::selection {
@@ -106,6 +148,33 @@ body {
 }
 .leaflet-control-attribution a {
   color: #8b96ad !important;
+}
+
+/* Light-mode Leaflet chrome */
+:root[data-theme='light'] .leaflet-container {
+  background: #e8ecf2;
+}
+:root[data-theme='light'] .leaflet-popup-content-wrapper,
+:root[data-theme='light'] .leaflet-popup-tip {
+  background: #ffffff;
+  color: #1c2536;
+  box-shadow: 0 8px 24px rgba(20, 40, 80, 0.2);
+}
+:root[data-theme='light'] .leaflet-popup-content-wrapper {
+  border-color: rgba(28, 45, 80, 0.15);
+}
+:root[data-theme='light'] .leaflet-bar a {
+  background: #ffffff;
+  color: #33415c;
+  border-color: rgba(28, 45, 80, 0.15);
+}
+:root[data-theme='light'] .leaflet-bar a:hover {
+  background: #eef2f8;
+  color: #1c2536;
+}
+:root[data-theme='light'] .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #5c6a84 !important;
 }
 
 /* Route glow */

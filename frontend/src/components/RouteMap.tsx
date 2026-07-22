@@ -30,9 +30,10 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
 interface Props {
   encodedPolyline: string
   stops: Stop[]
+  theme?: 'dark' | 'light'
 }
 
-export function RouteMap({ encodedPolyline, stops }: Props) {
+export function RouteMap({ encodedPolyline, stops, theme = 'dark' }: Props) {
   const path = useMemo(
     () => polyline.decode(encodedPolyline) as [number, number][],
     [encodedPolyline],
@@ -44,13 +45,17 @@ export function RouteMap({ encodedPolyline, stops }: Props) {
     <div className="h-[440px] w-full overflow-hidden rounded-lg border border-border lg:h-[500px]">
       <MapContainer center={path[0] ?? [39.5, -95]} zoom={5} scrollWheelZoom>
         <TileLayer
+          key={theme}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={`https://{s}.basemaps.cartocdn.com/${theme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
           subdomains="abcd"
           maxZoom={20}
         />
-        {/* Route: dark casing + glowing core */}
-        <Polyline positions={path} pathOptions={{ color: '#0b0e14', weight: 9, opacity: 0.9 }} />
+        {/* Route: casing + glowing core */}
+        <Polyline
+          positions={path}
+          pathOptions={{ color: theme === 'dark' ? '#0b0e14' : '#ffffff', weight: 9, opacity: 0.9 }}
+        />
         <Polyline
           positions={path}
           className="route-glow"
