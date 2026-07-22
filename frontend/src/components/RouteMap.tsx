@@ -4,27 +4,16 @@ import L from 'leaflet'
 import polyline from '@mapbox/polyline'
 
 import type { Stop, StopType } from '@/types'
+import { STOP_META, iconSvg, markerHtml } from '@/lib/statusStyles'
 import { formatDateTime, formatDuration } from '@/lib/utils'
 
-const STOP_STYLE: Record<StopType, { emoji: string; color: string; title: string }> = {
-  start: { emoji: '🚛', color: '#334155', title: 'Trip start' },
-  pretrip: { emoji: '📋', color: '#64748b', title: 'Pre-trip inspection' },
-  pickup: { emoji: '📦', color: '#2563eb', title: 'Pickup' },
-  dropoff: { emoji: '🏁', color: '#16a34a', title: 'Dropoff' },
-  fuel: { emoji: '⛽', color: '#d97706', title: 'Fuel stop' },
-  break: { emoji: '☕', color: '#9333ea', title: '30-min break' },
-  rest: { emoji: '🛏️', color: '#dc2626', title: '10-hr rest' },
-  restart: { emoji: '🔄', color: '#be123c', title: '34-hr restart' },
-}
-
 function stopIcon(type: StopType): L.DivIcon {
-  const { emoji, color } = STOP_STYLE[type]
   return L.divIcon({
     className: '',
-    html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9999px;background:white;border:2.5px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,.35);font-size:15px;line-height:1">${emoji}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -16],
+    html: markerHtml(type),
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18],
   })
 }
 
@@ -32,7 +21,7 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
     if (positions.length > 1) {
-      map.fitBounds(L.latLngBounds(positions), { padding: [36, 36] })
+      map.fitBounds(L.latLngBounds(positions), { padding: [40, 40] })
     }
   }, [map, positions])
   return null
@@ -52,31 +41,42 @@ export function RouteMap({ encodedPolyline, stops }: Props) {
   const visibleStops = stops.filter((s) => s.type !== 'pretrip')
 
   return (
-    <div className="h-[420px] w-full overflow-hidden rounded-lg border border-border lg:h-[480px]">
+    <div className="h-[440px] w-full overflow-hidden rounded-lg border border-border lg:h-[500px]">
       <MapContainer center={path[0] ?? [39.5, -95]} zoom={5} scrollWheelZoom>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <Polyline positions={path} pathOptions={{ color: '#2563eb', weight: 4, opacity: 0.85 }} />
-      {visibleStops.map((stop, i) => (
-        <Marker key={i} position={[stop.lat, stop.lng]} icon={stopIcon(stop.type)}>
-          <Popup>
-            <div className="min-w-44 space-y-0.5 text-[13px]">
-              <div className="font-semibold">{STOP_STYLE[stop.type].title}</div>
-              <div className="text-slate-600">{stop.label}</div>
-              <div>
-                <span className="font-medium">Arrive:</span> {formatDateTime(stop.arrival)}
-              </div>
-              {stop.duration_hrs > 0 && (
-                <div>
-                  <span className="font-medium">Duration:</span> {formatDuration(stop.duration_hrs)}
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={20}
+        />
+        {/* Route: dark casing + glowing core */}
+        <Polyline positions={path} pathOptions={{ color: '#0b0e14', weight: 9, opacity: 0.9 }} />
+        <Polyline
+          positions={path}
+          className="route-glow"
+          pathOptions={{ color: '#3987e5', weight: 4, opacity: 0.95 }}
+        />
+        {visibleStops.map((stop, i) => (
+          <Marker key={i} position={[stop.lat, stop.lng]} icon={stopIcon(stop.type)}>
+            <Popup>
+              <div className="min-w-48 space-y-1 text-[13px]">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span dangerouslySetInnerHTML={{ __html: iconSvg(STOP_META[stop.type].icon, STOP_META[stop.type].color, 14) }} />
+                  {STOP_META[stop.type].title}
                 </div>
-              )}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+                <div className="text-[#8b96ad]">{stop.label}</div>
+                <div>
+                  <span className="font-medium">Arrive:</span> {formatDateTime(stop.arrival)}
+                </div>
+                {stop.duration_hrs > 0 && (
+                  <div>
+                    <span className="font-medium">Duration:</span> {formatDuration(stop.duration_hrs)}
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
         <FitBounds positions={path} />
       </MapContainer>
     </div>
@@ -84,12 +84,17 @@ export function RouteMap({ encodedPolyline, stops }: Props) {
 }
 
 export function MapLegend() {
-  const entries = Object.entries(STOP_STYLE).filter(([type]) => type !== 'pretrip')
+  const entries = (Object.keys(STOP_META) as StopType[]).filter((t) => t !== 'pretrip')
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-      {entries.map(([type, { emoji, title }]) => (
-        <span key={type} className="inline-flex items-center gap-1">
-          <span>{emoji}</span> {title}
+    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+      {entries.map((type) => (
+        <span key={type} className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-flex size-5 items-center justify-center rounded-full border"
+            style={{ borderColor: STOP_META[type].color }}
+            dangerouslySetInnerHTML={{ __html: iconSvg(STOP_META[type].icon, STOP_META[type].color, 10) }}
+          />
+          {STOP_META[type].title}
         </span>
       ))}
     </div>

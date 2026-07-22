@@ -108,7 +108,11 @@ export function TripForm({ loading, onSubmit }: Props) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-gradient-to-r from-primary to-[#1c5cab] shadow-[0_0_18px_rgba(57,135,229,0.28)] transition-shadow hover:shadow-[0_0_26px_rgba(57,135,229,0.45)]"
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <Loader2 className="animate-spin" />

@@ -43,7 +43,7 @@ export function LogSheet({ log, dayNumber, totalDays }: { log: DailyLog; dayNumb
   const grandTotal = Object.values(log.totals).reduce((acc, t) => acc + t.minutes, 0)
 
   return (
-    <div className="log-sheet-page overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+    <div className="log-sheet-page overflow-hidden rounded-lg bg-[#fdfdfa] shadow-[0_16px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
       {/* Paper header */}
       <div className="border-b border-slate-300 px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
