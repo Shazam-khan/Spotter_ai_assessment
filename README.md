@@ -94,7 +94,25 @@ Returns `{ route: {polyline, distance_miles, duration_hrs}, stops: [...], logs: 
 - A 34-hr restart is taken automatically if the 70-hr cycle is exhausted mid-trip.
 - The public OSRM/Nominatim servers are free demo services — occasional slowness is possible on cold requests.
 
-## Hosting
+## Deployment (Vercel + Render)
 
-- Frontend → Vercel (`frontend/`, set `VITE_API_URL` to the backend URL).
-- Backend → Render/Railway/Fly (`backend/`, gunicorn + whitenoise included; set `DJANGO_DEBUG=false`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`).
+The frontend is a static Vite build (Vercel); the backend is a long-running Django/gunicorn
+service (Render) — trip planning chains several external API calls and can take 10–25 s,
+which doesn't fit serverless function limits.
+
+**Backend → Render** (uses [render.yaml](render.yaml) as a Blueprint):
+1. Push the repo to GitHub, then in Render choose **New → Blueprint** and select the repo.
+2. After the first deploy, note the service URL (e.g. `https://eld-trip-planner-api.onrender.com`)
+   and check `https://<api-url>/health/` returns `{"status": "ok"}`.
+3. Once the frontend is live, set the `CORS_ALLOWED_ORIGINS` env var to the exact Vercel
+   origin (e.g. `https://eld-trip-planner.vercel.app`) and redeploy.
+
+**Frontend → Vercel:**
+1. **Add New Project** → import the repo → set **Root Directory** to `frontend/`
+   (framework auto-detects Vite; build `npm run build`, output `dist`).
+2. Add env var `VITE_API_URL = https://<your-render-service>.onrender.com` (no trailing slash).
+3. Deploy, then plug the resulting Vercel URL into Render's `CORS_ALLOWED_ORIGINS` (step 3 above).
+
+**Free-tier note:** Render spins the service down after ~15 min idle; the first request then
+cold-starts (~50 s). The UI shows a loading state, but for demos either open the `/health/`
+URL a minute beforehand or add a free uptime pinger (e.g. UptimeRobot) against it.
