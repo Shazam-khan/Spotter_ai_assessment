@@ -315,15 +315,6 @@ export function LogSheet({ log, dayNumber, totalDays, details, homeTerminal }: P
           <text x={8} y={REMARKS_Y + 24} fontSize={11} fontWeight={800} fill={INK}>
             REMARKS
           </text>
-          <line
-            x1={GRID_X}
-            y1={REMARKS_Y + 30}
-            x2={GRID_X + GRID_W}
-            y2={REMARKS_Y + 30}
-            stroke={INK}
-            strokeWidth={0.8}
-            opacity={0.5}
-          />
           {(() => {
             // Paper-log style: a tick at each event, nearby events (post-trip +
             // rest, fuel + break) share one bracket, and the label runs at 45°
@@ -331,49 +322,55 @@ export function LogSheet({ log, dayNumber, totalDays, details, homeTerminal }: P
             // beneath it.
             interface RemarkGroup {
               lines: string[]
-              xs: number[]
+              x1: number
+              x2: number
               lastMin: number
             }
             const groups: RemarkGroup[] = []
             for (const seg of remarks) {
-              const [city, ...rest] = seg.remark.split(' — ')
-              const activity = rest.join(' — ')
+              const [city, ...restParts] = seg.remark.split(' — ')
+              const activity = restParts.join(' — ')
               const last = groups[groups.length - 1]
               if (last && seg.start_min - last.lastMin <= 60) {
+                // Same location moments later (post-trip → rest, fuel → break):
+                // one bracket, activities stacked under the shared city line.
                 last.lines.push(activity || city)
-                last.xs.push(x(seg.start_min))
                 last.lastMin = seg.start_min
               } else {
                 groups.push({
                   lines: activity ? [city, activity] : [city],
-                  xs: [x(seg.start_min)],
+                  // The bracket spans the event's own duration, like the paper
+                  // form (capped at 1 hr so a long rest isn't bracketed whole).
+                  x1: x(seg.start_min),
+                  x2: x(Math.min(seg.end_min, seg.start_min + 60)),
                   lastMin: seg.start_min,
                 })
               }
             }
-            const barY = REMARKS_Y + 12
+            const barY = REMARKS_Y + 14
             return groups.map((g, i) => {
-              const ax = (g.xs[0] + g.xs[g.xs.length - 1]) / 2
-              const ty = barY + 12
+              const ax = (g.x1 + g.x2) / 2
+              const ty = barY + 10
               return (
                 <g key={i}>
-                  {g.xs.map((gx, j) => (
-                    <line key={j} x1={gx} y1={REMARKS_Y} x2={gx} y2={barY} stroke={PEN} strokeWidth={1.4} />
-                  ))}
-                  {g.xs.length > 1 && (
-                    <line x1={g.xs[0]} y1={barY} x2={g.xs[g.xs.length - 1]} y2={barY} stroke={PEN} strokeWidth={1.4} />
+                  <line x1={g.x1} y1={REMARKS_Y} x2={g.x1} y2={barY} stroke={PEN} strokeWidth={1.6} />
+                  {g.x2 - g.x1 > 3 && (
+                    <>
+                      <line x1={g.x2} y1={REMARKS_Y} x2={g.x2} y2={barY} stroke={PEN} strokeWidth={1.6} />
+                      <line x1={g.x1} y1={barY} x2={g.x2} y2={barY} stroke={PEN} strokeWidth={1.6} />
+                    </>
                   )}
                   <text
                     x={ax}
                     y={ty}
-                    fontSize={9.5}
-                    fontWeight={600}
+                    fontSize={10.5}
+                    fontWeight={700}
                     fill={PEN}
                     textAnchor="end"
                     transform={`rotate(-45 ${ax} ${ty})`}
                   >
                     {g.lines.map((line, j) => (
-                      <tspan key={j} x={ax} dy={j === 0 ? 0 : 12}>
+                      <tspan key={j} x={ax} dy={j === 0 ? 0 : 14}>
                         {line}
                       </tspan>
                     ))}
